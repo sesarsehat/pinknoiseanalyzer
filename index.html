@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio FFT Analyzer & Tonal Balance Optimizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h2 {
+            margin-top: 0;
+            color: #1d1d1f;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 10px;
+        }
+        .upload-section {
+            margin: 20px 0 30px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .action-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+        }
+        /* PDF Target Layout Styling */
+        #pdfContent {
+            padding: 10px;
+            background: #ffffff;
+        }
+        .pdf-header {
+            display: none;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .pdf-header h1 { margin: 0; font-size: 24px; color: #1d1d1f; }
+        .pdf-header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #fcfcfc;
+        }
+        .status {
+            font-weight: bold;
+            color: #0066cc;
+            margin-top: 10px;
+        }
+        .pos-val {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .neg-val {
+            color: #c62828;
+            font-weight: bold;
+        }
+        .pdf-btn {
+            background-color: #ff3b30; /* PDF red signature theme */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .pdf-btn:hover {
+            background-color: #e03126;
+        }
+        .pdf-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Pink Noise FFT Analyzer & Tonal Balance Optimizer</h2>
+    <p>Upload your mix or master (.wav, .mp3) to analyze its tonal balance against a Pink Noise reference and receive subtle, safe EQ correction targets.</p>
+    
+    <div class="upload-section">
+        <input type="file" id="audioFile" accept="audio/*">
+        <div id="statusText" class="status"></div>
+    </div>
+
+    <div id="resultWrapper" style="display: none;">
+        <div class="action-area">
+            <h3>Analysis Results</h3>
+            <button class="pdf-btn" id="pdfBtn">Export to PDF</button>
+        </div>
+        
+        <div id="pdfContent">
+            <div class="pdf-header" id="pdfHeader">
+                <h1>Audio FFT Analysis Report</h1>
+                <p id="pdfMeta">Generated on: -- | File: --</p>
+            </div>
+            
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>Band (Hz)</th>
+                        <th>Energy (dB)</th>
+                        <th>Deviation</th>
+                        <th>EQ Suggestion (25%)</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const audioFileInput = document.getElementById('audioFile');
+    const statusText = document.getElementById('statusText');
+    const resultWrapper = document.getElementById('resultWrapper');
+    const tableBody = document.getElementById('tableBody');
+    const pdfBtn = document.getElementById('pdfBtn');
+    const pdfHeader = document.getElementById('pdfHeader');
+    const pdfMeta = document.getElementById('pdfMeta');
+
+    let fileName = "";
+    const worker = new Worker('worker.js');
+
+    audioFileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        fileName = file.name;
+        statusText.innerText = "Reading file and decoding audio... Please wait.";
+        resultWrapper.style.display = "none";
+        tableBody.innerHTML = "";
+
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await file.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            
+            const channelData = audioBuffer.getChannelData(0);
+            const sampleRate = audioBuffer.sampleRate;
+
+            statusText.innerText = "Processing FFT Core Engine via Web Worker...";
+            worker.postMessage({ channelData, sampleRate });
+
+        } catch (error) {
+            console.error(error);
+            statusText.innerText = "Error processing audio. Make sure the file format is valid.";
+        }
+    });
+
+    worker.onmessage = function(e) {
+        const results = e.data;
+        statusText.innerText = "Analysis completed successfully!";
+        resultWrapper.style.display = "block";
+
+        results.forEach(row => {
+            const tr = document.createElement('tr');
+            const devSign = row.deviation >= 0 ? '+' : '';
+            const eqSign = row.eq >= 0 ? '+' : '';
+            const devClass = row.deviation >= 0 ? 'pos-val' : 'neg-val';
+            const eqClass = row.eq >= 0 ? 'pos-val' : 'neg-val';
+
+            tr.innerHTML = `
+                <td><strong>${row.band} Hz</strong></td>
+                <td>${row.energy.toFixed(1)} dB</td>
+                <td class="${devClass}">${devSign}${row.deviation.toFixed(1)} dB</td>
+                <td class="${eqClass}">${eqSign}${row.eq.toFixed(1)} dB</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    };
+
+    // PDF Exporter Trigger Logic
+    pdfBtn.addEventListener('click', () => {
+        pdfBtn.disabled = true;
+        pdfBtn.innerText = "Generating PDF...";
+
+        // Set up print metadata
+        const currentDate = new Date().toLocaleString();
+        pdfMeta.innerText = `Track / File: ${fileName}\nGenerated: ${currentDate}`;
+        
+        // Show the PDF header styling temporarily for capturing
+        pdfHeader.style.display = "block";
+
+        const element = document.getElementById('pdfContent');
+        const opt = {
+            margin:       0.5,
+            filename:     `FFT-Analysis-${fileName.replace(/\.[^/.]+$/, "")}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        // Run rendering sequence
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Revert layout styles back to normal screen state
+            pdfHeader.style.display = "none";
+            pdfBtn.disabled = false;
+            pdfBtn.innerText = "Export to PDF";
+        }).catch(err => {
+            console.error("PDF generation failed: ", err);
+            pdfHeader.style.display = "none";
+            pdfBtn.disabled = false;
+            pdfBtn.innerText = "Export to PDF";
+        });
+    });
+</script>
+
+<!-- SUPPORT SECTION -->
+
+<div style="
+    max-width:700px;
+    margin:30px auto;
+    padding:20px;
+    text-align:center;
+    border:1px solid #ddd;
+    border-radius:12px;
+    background:#fafafa;
+">
+
+
+<h3 style="margin-top:0;">
+    Support This Project
+</h3>
+
+<p style="
+    color:#555;
+    line-height:1.6;
+    margin-bottom:20px;
+">
+   To consider supporting its development. Your contribution helps keep this
+    tool free and continuously improved.
+</p>
+
+<a href="https://paypal.me/sesarantitesis" target="_blank"
+   style="
+   display:inline-block;
+   padding:12px 24px;
+   background:#0070ba;
+   color:white;
+   text-decoration:none;
+   border-radius:8px;
+   font-weight:bold;">
+   Donate via PayPal
+</a>
+
+
+<a href="https://saweria.co/sesarantitesis"
+   target="_blank"
+   style="
+        display:inline-block;
+        margin:5px;
+        padding:12px 24px;
+        background:#ff813f;
+        color:white;
+        text-decoration:none;
+        border-radius:8px;
+        font-weight:bold;
+   ">
+   Donate via Saweria
+</a>
+
+
+</div>
+<!-- END SUPPORT SECTION -->
+</body>
+</html>
