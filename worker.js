@@ -1,4 +1,4 @@
-// worker.js - Full Song Pink Noise Analyzer (15% Correction)
+// worker.js - Full Song Pink Noise Analyzer (10% Correction)
 
 self.onmessage = function (e) {
     const data = e.data || {};
@@ -13,7 +13,7 @@ self.onmessage = function (e) {
     const blendFactor =
         typeof data.blendFactor === "number" && !Number.isNaN(data.blendFactor)
             ? data.blendFactor
-            : 0.15;
+            : 0.10;
 
     const fftSize = 16384;
     const hopSize = fftSize / 2;
@@ -101,7 +101,7 @@ self.onmessage = function (e) {
             deviation = 0;
         }
 
-        // Conservative correction (default 15%)
+        // Conservative correction (default 10%)
         const eq = (-deviation) * blendFactor;
 
         return {
