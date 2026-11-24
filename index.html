@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,7 +17,7 @@
             align-items: center;
         }
         .container {
-            max-width: 900px;
+            max-width: 960px;
             width: 100%;
             background: #ffffff;
             padding: 30px;
@@ -64,7 +64,7 @@
             margin-top: 15px;
         }
         th, td {
-            padding: 12px 15px;
+            padding: 12px 14px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -112,7 +112,7 @@
 
 <div class="container">
     <h2>Pink Noise FFT Analyzer & Tonal Balance Optimizer</h2>
-    <p>Upload your mix or master (.wav, .mp3) to analyze its tonal balance against a Pink Noise reference and receive subtle, safe EQ correction targets.</p>
+    <p>Upload your mix or master (.wav, .mp3) to analyze its tonal balance against a Pink Noise reference and receive subtle, safe EQ correction targets (10% and 5%).</p>
     
     <div class="upload-section">
         <input type="file" id="audioFile" accept="audio/*">
@@ -138,10 +138,11 @@
                         <th>Energy (dB)</th>
                         <th>Deviation</th>
                         <th>EQ Suggestion (10%)</th>
+                        <th>EQ Suggestion (5%)</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -189,19 +190,32 @@
         const results = e.data;
         statusText.innerText = "Analysis completed successfully!";
         resultWrapper.style.display = "block";
+        tableBody.innerHTML = "";
 
         results.forEach(row => {
+            const eq10 = typeof row.eq10 === "number"
+                ? row.eq10
+                : (typeof row.eq === "number" ? row.eq : 0);
+
+            const eq5 = typeof row.eq5 === "number"
+                ? row.eq5
+                : eq10 * 0.5;
+
             const tr = document.createElement('tr');
             const devSign = row.deviation >= 0 ? '+' : '';
-            const eqSign = row.eq >= 0 ? '+' : '';
+            const eq10Sign = eq10 >= 0 ? '+' : '';
+            const eq5Sign = eq5 >= 0 ? '+' : '';
+
             const devClass = row.deviation >= 0 ? 'pos-val' : 'neg-val';
-            const eqClass = row.eq >= 0 ? 'pos-val' : 'neg-val';
+            const eq10Class = eq10 >= 0 ? 'pos-val' : 'neg-val';
+            const eq5Class = eq5 >= 0 ? 'pos-val' : 'neg-val';
 
             tr.innerHTML = `
                 <td><strong>${row.band} Hz</strong></td>
                 <td>${row.energy.toFixed(1)} dB</td>
                 <td class="${devClass}">${devSign}${row.deviation.toFixed(1)} dB</td>
-                <td class="${eqClass}">${eqSign}${row.eq.toFixed(1)} dB</td>
+                <td class="${eq10Class}">${eq10Sign}${eq10.toFixed(1)} dB</td>
+                <td class="${eq5Class}">${eq5Sign}${eq5.toFixed(1)} dB</td>
             `;
             tableBody.appendChild(tr);
         });
@@ -255,7 +269,6 @@
     background:#fafafa;
 ">
 
-
 <h3 style="margin-top:0;">
     Support This Project
 </h3>
@@ -281,7 +294,6 @@
    Donate via PayPal
 </a>
 
-
 <a href="https://saweria.co/sesarantitesis"
    target="_blank"
    style="
@@ -296,7 +308,6 @@
    ">
    Donate via Saweria
 </a>
-
 
 </div>
 <!-- END SUPPORT SECTION -->
