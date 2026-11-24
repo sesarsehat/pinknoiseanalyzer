@@ -1,4 +1,4 @@
-// worker.js - Full Song Pink Noise Analyzer (10% Correction)
+// worker.js - Full Song Pink Noise Analyzer (10% & 5% Correction)
 
 self.onmessage = function (e) {
     const data = e.data || {};
@@ -10,10 +10,12 @@ self.onmessage = function (e) {
         return;
     }
 
-    const blendFactor =
+    const blendFactor10 =
         typeof data.blendFactor === "number" && !Number.isNaN(data.blendFactor)
             ? data.blendFactor
             : 0.10;
+
+    const blendFactor5 = 0.05;
 
     const fftSize = 16384;
     const hopSize = fftSize / 2;
@@ -101,14 +103,17 @@ self.onmessage = function (e) {
             deviation = 0;
         }
 
-        // Conservative correction (default 10%)
-        const eq = (-deviation) * blendFactor;
+        // Dual suggestion: 10% and 5%
+        const eq10 = (-deviation) * blendFactor10;
+        const eq5 = (-deviation) * blendFactor5;
 
         return {
             band: b.name,
             energy: b.db,
             deviation: deviation,
-            eq: eq
+            eq: eq10,     // Tetap pertahankan 'eq' untuk 10%
+            eq10: eq10,   // Alias eksplisit 10%
+            eq5: eq5      // Tambahan suggestion 5%
         };
     });
 
